@@ -117,13 +117,13 @@ kaggle ([download here](https://www.kaggle.com/datasets/arnavvvvv/spotify-music/
 
 [Full reference](./apps/pyspark_demo/README.md).
 
-[pyspark demo](./articles/images/pyspark-demo.png)
+![pyspark demo](./articles/images/pyspark-demo.png "Pyspark demo master UI")
 
 ## Scala
 
 [Full reference](./apps/scalademo/README.md).
 
-[scala demo](./articles/images/scala-demo.png)
+![scala demo](./articles/images/scala-demo.png "Scala demo master UI")
 
 # Summary
 
