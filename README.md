@@ -2,16 +2,18 @@
 
 # General
 
-A simple spark standalone cluster for your testing environment purposses. A *docker-compose up* away from you solution for your spark development environment.
+A simple spark standalone cluster for your testing environment purposes. A *docker-compose up* away from you solution
+for your spark development environment.
 
 The Docker compose will create the following containers:
 
-container|Exposed ports
----|---
-spark-master|9090 7077
-spark-worker-1|9091
-spark-worker-2|9092
-demo-database|5432
+| container            | Exposed ports |
+|----------------------|---------------|
+| spark-history-server | 18080         |
+| spark-master         | 9090 7077     |
+| spark-worker-1       | 9091          |
+| spark-worker-2       | 9092          |
+| demo-database        | 5432          |
 
 # Installation
 
@@ -21,13 +23,18 @@ The following steps will make you run your spark cluster's containers.
 
 * Docker installed
 
-* Docker compose  installed
+* Docker compose installed
 
 ## Build the image
 
+```sh
+docker build -t cluster-apache-spark:3.5.1 .
+```
+
+## Tag the image
 
 ```sh
-docker build -t cluster-apache-spark:3.0.2 .
+docker tag cluster-apache-spark:3.5.1 cluster-apache-spark:latest
 ```
 
 ## Run the docker-compose
@@ -40,30 +47,36 @@ docker-compose up -d
 
 ## Validate your cluster
 
-Just validate your cluster accesing the spark UI on each worker & master URL.
+Just validate your cluster accessing the spark UI on each worker & master URL.
+
+### Spark History Server
+
+http://localhost:18080/
+
+![history server](./articles/images/spark-history-server.png "Spark History Server")
 
 ### Spark Master
 
 http://localhost:9090/
 
-![alt text](docs/spark-master.png "Spark master UI")
+![alt text](./articles/images/spark-master.png "Spark master UI")
 
 ### Spark Worker 1
 
 http://localhost:9091/
 
-![alt text](docs/spark-worker-1.png "Spark worker 1 UI")
+![alt text](./articles/images/spark-worker-1.png "Spark worker 1 UI")
 
 ### Spark Worker 2
 
 http://localhost:9092/
 
-![alt text](docs/spark-worker-2.png "Spark worker 2 UI")
+![alt text](./articles/images/spark-worker-2.png "Spark worker 2 UI")
 
+# Resource Allocation
 
-# Resource Allocation 
-
-This cluster is shipped with three workers and one spark master, each of these has a particular set of resource allocation(basically RAM & cpu cores allocation).
+This cluster is shipped with three workers and one spark master, each of these has a particular set of resource
+allocation(basically RAM & cpu cores allocation).
 
 * The default CPU cores allocation for each spark worker is 1 core.
 
@@ -73,77 +86,44 @@ This cluster is shipped with three workers and one spark master, each of these h
 
 * The default RAM allocation for spark driver is 128mb
 
-* If you wish to modify this allocations just edit the env/spark-worker.sh file.
+* If you wish to modify these allocations just edit the env/spark-worker.sh file.
 
-# Binded Volumes
+# Bound Volumes
 
 To make app running easier I've shipped two volume mounts described in the following chart:
 
-Host Mount|Container Mount|Purposse
----|---|---
-apps|/opt/spark-apps|Used to make available your app's jars on all workers & master
-data|/opt/spark-data| Used to make available your app's data on all workers & master
+| Host Mount | Container Mount | Purpose                                                        |
+|------------|-----------------|----------------------------------------------------------------|
+| apps       | /opt/spark-apps | Used to make available your app's jars on all workers & master |
+| data       | /opt/spark-data | Used to make available your app's data on all workers & master |
 
 This is basically a dummy DFS created from docker Volumes...(maybe not...)
 
+# Configuration
+
+You can set default properties for `spark-submit` inside `conf/spark-defaults.conf`. Here we define the properties
+required to run the Spark History Server:
+
+* `spark.eventLog.enabled` -> `true`
+* `spark.eventLog.dir` -> `file:///var/log/spark-events`
+* `spark.history.fs.logDirectory` -> `file:///var/log/spark-events`
+
 # Run Sample applications
 
+The demo applications use the top spotify songs dataset from
+kaggle ([download here](https://www.kaggle.com/datasets/arnavvvvv/spotify-music/code)).
 
-## NY Bus Stops Data [Pyspark]
+## Pyspark
 
-This programs just loads archived data from [MTA Bus Time](http://web.mta.info/developers/MTA-Bus-Time-historical-data.html) and apply basic filters using spark sql, the result are persisted into a postgresql table.
+[Full reference](./apps/pyspark_demo/README.md).
 
-The loaded table will contain the following structure:
+[pyspark demo](./articles/images/pyspark-demo.png)
 
-latitude|longitude|time_received|vehicle_id|distance_along_trip|inferred_direction_id|inferred_phase|inferred_route_id|inferred_trip_id|next_scheduled_stop_distance|next_scheduled_stop_id|report_hour|report_date
----|---|---|---|---|---|---|---|---|---|---|---|---
-40.668602|-73.986697|2014-08-01 04:00:01|469|4135.34710710144|1|IN_PROGRESS|MTA NYCT_B63|MTA NYCT_JG_C4-Weekday-141500_B63_123|2.63183804205619|MTA_305423|2014-08-01 04:00:00|2014-08-01
+## Scala
 
-To submit the app connect to one of the workers or the master and execute:
+[Full reference](./apps/scalademo/README.md).
 
-```sh
-/opt/spark/bin/spark-submit --master spark://spark-master:7077 \
---jars /opt/spark-apps/postgresql-42.2.22.jar \
---driver-memory 1G \
---executor-memory 1G \
-/opt/spark-apps/main.py
-```
-
-![alt text](./articles/images/pyspark-demo.png "Spark UI with pyspark program running")
-
-## MTA Bus Analytics[Scala]
-
-This program takes the archived data from [MTA Bus Time](http://web.mta.info/developers/MTA-Bus-Time-historical-data.html) and make some aggregations on it, the calculated results are persisted on postgresql tables.
-
-Each persisted table correspond to a particullar aggregation:
-
-Table|Aggregation
----|---
-day_summary|A summary of vehicles reporting, stops visited, average speed and distance traveled(all vehicles)
-speed_excesses|Speed excesses calculated in a 5 minute window
-average_speed|Average speed by vehicle
-distance_traveled|Total Distance traveled by vehicle
-
-
-To submit the app connect to one of the workers or the master and execute:
-
-```sh
-/opt/spark/bin/spark-submit --deploy-mode cluster \
---master spark://spark-master:7077 \
---total-executor-cores 1 \
---class mta.processing.MTAStatisticsApp \
---driver-memory 1G \
---executor-memory 1G \
---jars /opt/spark-apps/postgresql-42.2.22.jar \
---conf spark.driver.extraJavaOptions='-Dconfig-path=/opt/spark-apps/mta.conf' \
---conf spark.executor.extraJavaOptions='-Dconfig-path=/opt/spark-apps/mta.conf' \
-/opt/spark-apps/mta-processing.jar
-```
-
-You will notice on the spark-ui a driver program and executor program running(In scala we can use deploy-mode cluster)
-
-![alt text](./articles/images/stats-app.png "Spark UI with scala program running")
-
+[scala demo](./articles/images/scala-demo.png)
 
 # Summary
 
@@ -155,15 +135,20 @@ You will notice on the spark-ui a driver program and executor program running(In
 
 * We ran a distributed application at home(just need enough cpu cores and RAM to do so).
 
+* Updated python version to 3.11.8 and Open JDK 21.
+
+* Added Spark History Server to see previously executed applications.
+
 # Why a standalone cluster?
 
-* This is intended to be used for test purposes, basically a way of running distributed spark apps on your laptop or desktop.
+* This is intended to be used for test purposes, basically a way of running distributed spark apps on your laptop or
+  desktop.
 
 * This will be useful to use CI/CD pipelines for your spark apps(A really difficult and hot topic)
 
 # Steps to connect and use a pyspark shell interactively
 
-* Follow the steps to run the docker-compose file. You can scale this down if needed to 1 worker. 
+* Follow the steps to run the docker-compose file. You can scale this down if needed to 1 worker.
 
 ```sh
 docker-compose up --scale spark-worker=1
@@ -178,4 +163,5 @@ pyspark
 
 * Right now to run applications in deploy-mode cluster is necessary to specify arbitrary driver port.
 
-* The spark submit entry in the start-spark.sh is unimplemented, the submit used in the demos can be triggered from any worker
+* The spark submit entry in the start-spark.sh is unimplemented, the submit used in the demos can be triggered from any
+  worker
