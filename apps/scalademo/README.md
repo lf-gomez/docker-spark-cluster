@@ -14,7 +14,7 @@ sbt package
 Connect to a master or worker container:
 
 ```bash
-docker exec -it <CONTAINER_ID> bash
+docker exec -it spark-master bash
 ```
 
 Submit jar and run the `ScalaDemo` class:

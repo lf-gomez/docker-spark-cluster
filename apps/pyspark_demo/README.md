@@ -8,7 +8,7 @@ retrieving the number of popular songs released each month and the top 5 artists
 Connect to a master or worker container:
 
 ```bash
-docker exec -it <CONTAINER_ID> bash
+docker exec -it spark-master bash
 ```
 
 Submit main file:
